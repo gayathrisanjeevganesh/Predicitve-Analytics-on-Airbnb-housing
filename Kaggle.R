@@ -1,3 +1,4 @@
+## Loading libraries
 library(knitr)
 library(ggplot2)
 library(plyr)
@@ -28,13 +29,14 @@ library(randomForest)
 library("ranger")
 #install.packages('caTools') 
 library(caTools)
+
 ### Read in training data
 data = read.csv('C:/Users/ram/Desktop/Gayathri/SaiAdmissions/Columbia/Books/Sem1/Applied analytics frameworks and methods 1/Class PPT/KAGGLE/analysisData.csv')
 
 ##Read in scoring data 
 scoringData = read.csv('C:/Users/ram/Desktop/Gayathri/SaiAdmissions/Columbia/Books/Sem1/Applied analytics frameworks and methods 1/Class PPT/KAGGLE/scoringData.csv')
 
-#kittys correlation
+#Plotting correlation matrix
 
 corMatrix = as.data.frame(cor(all_numVar[,-12]))
 corMatrix$var1 = rownames(corMatrix)
@@ -46,9 +48,9 @@ corMatrix %>%
   scale_fill_gradient2(low = 'red',high='green',mid = 'white')+
   theme(axis.text.x=element_text(angle=90))
 
-#data cleaning
+#Data cleaning
 
-#finding na columns
+#Step1: Finding na columns
 
 apply(all_numVar, 2, function(x) any(is.na(x)))
 
@@ -80,7 +82,7 @@ data$cleaning_fee <- ifelse(is.na(data$cleaning_fee),
                             data$cleaning_fee)
 sum(all_numVar$cleaning_fee)
 
-#cleaning scoring data of NA's
+#Stpe 2: Cleaning scoring data of NA's
 
 scoringData$beds <- ifelse(is.na(scoringData$beds), mean(scoringData$beds, 
                                                          na.rm=TRUE), 
@@ -110,21 +112,22 @@ scoringData$cleaning_fee <- ifelse(is.na(scoringData$cleaning_fee),
                                    scoringData$cleaning_fee)
 sum(scoringData$cleaning_fee)
 
-#introducing new variables
+#Step3: Feature engineering new variables
+## Data description - represents whether the listing has a description on not. 0 refers to no  description and 1 respresents a description
 
 data$description = as.character(data$description)
-
-# Whether there is a description (0,1). 0 represents no description
 data$noDescription = as.numeric(data$description!="")
 data$noDescription = factor(data$noDescription,labels=c('no description','contains description'))
+
 # Number of characters in the description
+
 data$charCountDescription = nchar(data$description)
 
-#UPPER CASE DESC
+# Upper case description
 
 data$upperCaseDescription = sapply(gregexpr("[A-Z]",data$description),function(x) sum(x>0))
 
-# description variable playing around scoringData
+# Description variable in scoringData
 
 scoringData$description = as.character(scoringData$description)
 
@@ -134,9 +137,10 @@ scoringData$noDescription = factor(scoringData$noDescription,labels=c('no descri
 # Number of characters in the description
 scoringData$charCountDescription = nchar(scoringData$description)
 
-#UPPER CASE DESC
+#Upper case description
 scoringData$upperCaseDescription = sapply(gregexpr("[A-Z]",scoringData$description),function(x) sum(x>0))
 
+## Splitting daatset into train and test                                          
 
 library(caTools)
 set.seed(2018)
@@ -145,12 +149,11 @@ train = data[split,]
 test = data[!split,]
 
 set.seed(2018)
-#forest1 = randomForest(price~longitude+latitude+accommodates+bedrooms+availability_365+cleaning_fee+availability_30+availability_90+neighbourhood_group_cleansed+reviews_per_month++ noDescription+charCountDescription+bathrooms+minimum_nights+host_total_listings_count+availability_60+number_of_reviews+beds+maximum_nights+guests_included+host_listings_count, data = data, ntree=100)
-
 split = sample.split(data$price,SplitRatio = 0.7)
 train = data[split,]
 test = data[!split,]
 
+## Building a randon forest model 1                                          
 forest = randomForest(price~ weekly_price+cleaning_fee+accommodates+
                         beds+bedrooms+latitude+longitude+availability_30+
                         availability_90+availability_60+
@@ -167,7 +170,7 @@ predForest = predict(forest,newdata = data)
 rmseForest = sqrt(mean((predForest-data$price)^2))
 rmseForest
 
-#model 2
+## Building random forest model 2
 
 split = sample.split(data$price,SplitRatio = 0.7)
 train = data[split,]
@@ -186,19 +189,22 @@ predForest = predict(forest,newdata = test)
 rmseForest = sqrt(mean((predForest-test$price)^2))
 rmseForest
 
-#linear regression
+#Building linear regression model
 
 modellr = lm(price~ weekly_price+cleaning_fee+accommodates+beds+bedrooms+
                square_feet+guests_included+security_deposit+bathrooms+
                monthly_price+review_scores_location+extra_people+
                availability_365+neighbourhood_group_cleansed+
                noDescription+charCountDescription,train)
+
 ### In sample metrics
 # Predict
 predlr = predict(modellr,test)
-# Print summary of regression results
+                                          
+# Print summary of regression results                                        
 summary(model)
 summary(model)$r.squared
+                                          
 # Calculate RMSE
 rmselr = sqrt(mean((predlr-test$price)^2))
 rmselr
